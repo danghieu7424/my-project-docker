@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "internal-admin",
+      "credentials": [
+        {
+          "accessKey": "STORAGE_ADMIN_KEY",
+          "secretKey": "STORAGE_ADMIN_SECRET"
+        }
+      ],
+      "actions": ["Read", "Write", "List", "Tagging", "Admin"]
+    }
+  ]
+}

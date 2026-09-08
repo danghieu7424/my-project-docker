@@ -1,0 +1,9 @@
+- name: object_storage
+  type: storage
+  license: Apache-2.0
+  source_mode: vendor
+  source_path: object_storage
+  docker_image: object-storage:3.59
+  compose_profile: object_storage
+  capability: objects.engine
+  status: pinned
