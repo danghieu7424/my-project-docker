@@ -3,11 +3,13 @@
 ## 1. M07 — Baseline (v1.0 / OS-01)
 ### 1.1. Image Build Offline
 - **Status:** Hoàn thành.
-- **Minh chứng:** `Dockerfile` đã được cấu trúc lại thành Single-stage build (`FROM chrislusf/seaweedfs:3.59`). Đã loại bỏ hoàn toàn lệnh `apk add` (không kết nối internet) và không kéo base alpine. File cấu hình `s3.json` được map trực tiếp.
+- **Source Link:** [`object_storage/Dockerfile`](./object_storage/Dockerfile)
+- **Minh chứng:** Đã hỗ trợ build offline trong môi trường Air-gapped (không internet) thông qua tham số `REGISTRY`. Người dùng có thể truyền private registry (VD: Harbor/Nexus) để kéo base image: `docker build --build-arg REGISTRY=harbor.local/ ...`. Đồng thời, cấu trúc Dockerfile đã loại bỏ hoàn toàn các lệnh `apk add` (yêu cầu internet) và ánh xạ trực tiếp cấu hình `s3.json` (`COPY s3.json /etc/object_storage/s3.json`).
 
 ### 1.2. Smoke Test (`smoke-s3.sh`) exit 0
 - **Status:** Hoàn thành.
-- **Minh chứng:** Log thực thi test thực tế (Mã thoát 0).
+- **Source Link:** [`object_storage/smoke-s3.sh`](./object_storage/smoke-s3.sh)
+- **Minh chứng:** Kịch bản test thực thi thành công, kết nối với S3 port 8333, thực hiện full CRUD lifecycle và kết thúc với `exit 0`. Dưới đây là log thực thi:
 
 ```bash
 $ ./smoke-s3.sh
@@ -27,20 +29,23 @@ SMOKE TEST THÀNH CÔNG (Mã thoát 0)
 ## 2. Enterprise / OS-02
 ### 2.1. S3 Healthcheck
 - **Status:** Hoàn thành.
-- **Minh chứng:** Thay vì sử dụng `curl` (cần internet để cài qua apk), Healthcheck trong `docker-compose.yml` được cấu hình lại sử dụng `wget -qO-` có sẵn:
+- **Source Link:** [`docker-compose.yml`](./docker-compose.yml) (section `healthcheck`)
+- **Minh chứng:** S3 container được giám sát sức khỏe liên tục. Thay vì sử dụng `curl` (yêu cầu cài đặt thêm qua apk), Healthcheck được cấu hình sử dụng lệnh `wget -qO-` có sẵn trong base image:
   `test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8333/ > /dev/null || exit 1"]`
 
 ### 2.2. Phương án HA & RPO
-- **Status:** Đã cập nhật (`VERSION`).
-- **Minh chứng:** Do hệ thống hiện tại chạy single-node SeaweedFS, file `VERSION` đã được cập nhật tường minh để làm rõ ranh giới theo chuẩn Enterprise:
+- **Status:** Đã cập nhật.
+- **Source Link:** [`object_storage/VERSION`](./object_storage/VERSION)
+- **Minh chứng:** Do mô hình hiện tại là Single-node (chưa cấu hình cluster), file `VERSION` đã được cập nhật tường minh để xác nhận ranh giới thiết kế, tuân thủ yêu cầu:
   ```yaml
   ha: none
   rpo: 24h
   ```
 
 ### 2.3. Backup/Restore & Restore Drill
-- **Status:** Hoàn thành. Kịch bản Backup/Restore được đóng gói trong `backup-restore.sh`.
-- **Minh chứng Restore Drill (Diễn tập khôi phục):**
+- **Status:** Hoàn thành.
+- **Source Link:** [`object_storage/backup-restore.sh`](./object_storage/backup-restore.sh)
+- **Minh chứng:** Kịch bản Backup/Restore tự động đã được triển khai, tận dụng chính volume và binary trong container (tar) để không phụ thuộc vào tool ở host. Dưới đây là log thực tế của quá trình Restore Drill (Diễn tập khôi phục):
 
 ```bash
 # 1. Tạo dữ liệu giả lập

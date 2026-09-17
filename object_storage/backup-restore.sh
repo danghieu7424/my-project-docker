@@ -11,7 +11,8 @@ if [ "$ACTION" == "backup" ]; then
     BACKUP_FILE="s3_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
     
     # Dùng chính image object-storage (chứa tar) để nén thư mục /data
-    docker run --rm --volumes-from object-storage -v "$BACKUP_DIR":/backup "$IMAGE" sh -c "tar czf /backup/$BACKUP_FILE /data"
+    # Lưu ý: Cần override entrypoint vì mặc định là "weed"
+    docker run --rm --volumes-from object-storage -v "$BACKUP_DIR":/backup --entrypoint sh "$IMAGE" -c "tar czf /backup/$BACKUP_FILE /data"
     
     echo "=== Backup thành công: $BACKUP_DIR/$BACKUP_FILE ==="
 
@@ -24,14 +25,15 @@ elif [ "$ACTION" == "restore" ]; then
     fi
     
     echo "=== Bắt đầu restore từ $FILE ==="
-    # Xoá data hiện tại (nếu cần clean trước)
-    # docker run --rm --volumes-from object-storage "$IMAGE" sh -c "rm -rf /data/*"
+    # STOP container đang chạy để giải phóng Lock của LevelDB trước khi restore
+    echo "Đang tạm dừng hệ thống để an toàn khôi phục..."
+    docker stop object-storage
     
-    # Giải nén đè lên /data
-    docker run --rm --volumes-from object-storage -v "$(cd $(dirname $FILE) && pwd)":/backup "$IMAGE" sh -c "tar xzf /backup/$(basename $FILE) -C /"
+    # Giải nén đè lên /data (nhớ override entrypoint)
+    docker run --rm --volumes-from object-storage -v "$(cd $(dirname $FILE) && pwd)":/backup --entrypoint sh "$IMAGE" -c "rm -rf /data/* && tar xzf /backup/$(basename $FILE) -C /"
     
     echo "=== Restore hoàn tất. Đang khởi động lại container... ==="
-    docker restart object-storage
+    docker start object-storage
     echo "=== Đã khôi phục dữ liệu thành công ==="
 
 else
