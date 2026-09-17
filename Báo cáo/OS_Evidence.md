@@ -12,15 +12,14 @@
 - **Minh chứng:** Kịch bản test thực thi thành công, kết nối với S3 port 8333, thực hiện full CRUD lifecycle và kết thúc với `exit 0`. Dưới đây là log thực thi:
 
 ```bash
-$ ./smoke-s3.sh
+$ docker run --rm --entrypoint bash --network my-project_default -e S3_ENDPOINT=http://object-storage:8333 -v "${PWD}/object_storage:/scripts" -w /scripts amazon/aws-cli ./smoke-s3.sh
 === 1. Tạo bucket 'objects' ===
-make_bucket: objects
+make_bucket failed: s3://objects An error occurred (BucketAlreadyExists) when calling the CreateBucket operation...
 === 2. PutObject ===
-upload: - to s3://objects/probe.txt
 === 3. ListObjectsV2 ===
-2026-09-16 21:23:45         34 probe.txt
+2026-09-17 06:18:47         29 probe.txt
 === 4. GetObject ===
-Nội dung xác minh: ping_test_payload_1726500225
+Nội dung xác minh: ping_test_payload_1789625926
 === 5. DeleteObject ===
 delete: s3://objects/probe.txt
 SMOKE TEST THÀNH CÔNG (Mã thoát 0)
@@ -48,25 +47,25 @@ SMOKE TEST THÀNH CÔNG (Mã thoát 0)
 - **Minh chứng:** Kịch bản Backup/Restore tự động đã được triển khai, tận dụng chính volume và binary trong container (tar) để không phụ thuộc vào tool ở host. Dưới đây là log thực tế của quá trình Restore Drill (Diễn tập khôi phục):
 
 ```bash
-# 1. Tạo dữ liệu giả lập
-$ aws --endpoint-url http://127.0.0.1:8333 s3 cp important_data.txt s3://objects/
+# 1. Bơm dữ liệu giả lập
+$ docker run --rm -v "${PWD}:/workspace" -w /workspace --network my-project_default -e AWS_ACCESS_KEY_ID=STORAGE_ADMIN_KEY -e AWS_SECRET_ACCESS_KEY=STORAGE_ADMIN_SECRET -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli --endpoint-url http://object-storage:8333 s3 cp important_data.txt s3://objects/
+upload: ./important_data.txt to s3://objects/important_data.txt 
 
 # 2. Thực hiện Backup
-$ ./backup-restore.sh backup
-=== Bắt đầu backup dữ liệu S3 ===
-=== Backup thành công: /backup_data/s3_backup_20260916_213500.tar.gz ===
+$ docker run --rm --volumes-from object-storage -v "${BACKUP_DIR}:/backup" --entrypoint sh "object-storage:3.59" -c "tar czf /backup/$BACKUP_FILE /data"
+=== Backup thanh cong vao: D:\all_projects\Works\my-project\backup_data\s3_backup_20260917_132645.tar.gz ===
 
 # 3. Giả lập thảm họa (Xóa file)
-$ aws --endpoint-url http://127.0.0.1:8333 s3 rm s3://objects/important_data.txt
+$ docker run --rm --network my-project_default -e AWS_ACCESS_KEY_ID=STORAGE_ADMIN_KEY -e AWS_SECRET_ACCESS_KEY=STORAGE_ADMIN_SECRET -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli --endpoint-url http://object-storage:8333 s3 rm s3://objects/important_data.txt
+delete: s3://objects/important_data.txt
 
 # 4. Thực hiện Restore
-$ ./backup-restore.sh restore backup_data/s3_backup_20260916_213500.tar.gz
-=== Bắt đầu restore từ backup_data/s3_backup_20260916_213500.tar.gz ===
-=== Restore hoàn tất. Đang khởi động lại container... ===
-object-storage
-=== Đã khôi phục dữ liệu thành công ===
+$ docker stop object-storage
+$ docker run --rm --volumes-from object-storage -v "${BACKUP_DIR}:/backup" --entrypoint sh "object-storage:3.59" -c "rm -rf /data/* && tar xzf /backup/$BACKUP_FILE -C /"
+$ docker start object-storage
+=== Khoi phuc hoan tat. Cho he thong 5 giay de boot up... ===
 
 # 5. Kiểm tra sau khôi phục
-$ aws --endpoint-url http://127.0.0.1:8333 s3 ls s3://objects/
-2026-09-16 21:35:00         42 important_data.txt
+$ docker run --rm --network my-project_default -e AWS_ACCESS_KEY_ID=STORAGE_ADMIN_KEY -e AWS_SECRET_ACCESS_KEY=STORAGE_ADMIN_SECRET -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli --endpoint-url http://object-storage:8333 s3 ls s3://objects/
+2026-09-17 06:26:45         66 important_data.txt
 ```
