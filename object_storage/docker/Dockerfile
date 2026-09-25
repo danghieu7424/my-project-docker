@@ -8,7 +8,7 @@ COPY src/ .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/bin/weed ./weed
 
-FROM alpine:3.19
+FROM local/alpine:3.19
 
 RUN apk add --no-cache curl ca-certificates tzdata
 

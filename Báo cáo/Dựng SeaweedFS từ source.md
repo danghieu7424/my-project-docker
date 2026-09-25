@@ -17,3 +17,11 @@ curl.exe -i http://127.0.0.1:8333/
 ---
 # Chạy smoke test bên trong mạng container
 docker exec object-storage curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8333/
+
+---
+
+# 1. Tắt tạm thời tính năng check online của BuildKit trong phiên PowerShell này
+$env:DOCKER_BUILDKIT=0
+
+# 2. Chạy lệnh build offline
+docker compose --profile object_storage build
