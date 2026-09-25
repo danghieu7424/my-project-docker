@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Tự động nạp cặp khóa runtime nếu tồn tại
 if [ -f ".runtime/object_storage/credentials.env" ]; then
-  set -a
-  source .runtime/object_storage/credentials.env
-  set +a
+  eval $(tr -d '\r\xef\xbb\xbf' < .runtime/object_storage/credentials.env)
 fi
-
 
 ENDPOINT="${S3_ENDPOINT:-http://127.0.0.1:8333}"
 BUCKET="objects"
