@@ -13,3 +13,7 @@ docker compose --profile object_storage ps
 
 docker exec object-storage wget -S -O - http://127.0.0.1:8333/
 curl.exe -i http://127.0.0.1:8333/
+
+---
+# Chạy smoke test bên trong mạng container
+docker exec object-storage curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8333/
