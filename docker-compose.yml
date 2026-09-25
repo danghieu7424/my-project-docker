@@ -17,6 +17,7 @@ services:
       start_period: 5s
     volumes:
       - object_storage_data:/data
+      - ./.runtime/object_storage/s3.json:/etc/object_storage/s3.json:ro
 
 volumes:
   object_storage_data:
