@@ -6,7 +6,7 @@ WORKDIR /build
 
 COPY src/ .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/weed ./weed
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/bin/weed ./weed
 
 FROM alpine:3.19
 
@@ -17,9 +17,9 @@ RUN addgroup -S -g 10001 storagegroup && \
 
 WORKDIR /app
 
-COPY --from=builder /build/weed /usr/local/bin/weed
+COPY --from=builder /build/bin/weed /usr/bin/weed
 
-RUN chmod +x /usr/local/bin/weed
+RUN chmod +x /usr/bin/weed
 
 RUN mkdir -p /data/s3 /data/filer /data/volume && \
     chown -R storageuser:storagegroup /data /app
@@ -32,4 +32,4 @@ USER 10001:10001
 
 EXPOSE 8333
 
-ENTRYPOINT ["weed", "server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/object_storage/s3.json"]
+ENTRYPOINT ["/usr/bin/weed", "server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/object_storage/s3.json"]

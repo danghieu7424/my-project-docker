@@ -4,3 +4,4 @@ git_commit: 27b34f37935fb3eddb9c7759acf397dbae20eb03
 license: Apache-2.0
 image: object-storage:3.59
 ha: none
+rpo: 24h
