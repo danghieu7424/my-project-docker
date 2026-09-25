@@ -1,5 +1,6 @@
 upstream: seaweedfs
 git_ref: 3.59
+git
 license: Apache-2.0
 image: object-storage:3.59
 digest: sha256:f3c620247dfd9aace294926c1961f06f12606990afc2bab11d0ca450ed9a52f3
