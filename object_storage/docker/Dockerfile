@@ -1,4 +1,12 @@
-FROM chrislusf/seaweedfs:3.59 AS upstream
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache git make build-base
+
+WORKDIR /build
+
+COPY src/ .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/weed ./weed
 
 FROM alpine:3.19
 
@@ -9,13 +17,15 @@ RUN addgroup -S -g 10001 storagegroup && \
 
 WORKDIR /app
 
-COPY --from=upstream /usr/bin/weed /usr/local/bin/weed
+COPY --from=builder /build/weed /usr/local/bin/weed
+
 RUN chmod +x /usr/local/bin/weed
 
 RUN mkdir -p /data/s3 /data/filer /data/volume && \
     chown -R storageuser:storagegroup /data /app
 
 COPY config/s3.json /etc/object_storage/s3.json
+
 RUN chown -R storageuser:storagegroup /etc/object_storage
 
 USER 10001:10001
