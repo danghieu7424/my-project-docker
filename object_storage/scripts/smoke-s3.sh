@@ -2,7 +2,8 @@
 set -euo pipefail
 
 if [ -f ".runtime/object_storage/credentials.env" ]; then
-  eval $(tr -d '\r\xef\xbb\xbf' < .runtime/object_storage/credentials.env)
+  STORAGE_ADMIN_KEY=$(grep 'STORAGE_ADMIN_KEY=' .runtime/object_storage/credentials.env | cut -d= -f2 | tr -d '\r\n ')
+  STORAGE_ADMIN_SECRET=$(grep 'STORAGE_ADMIN_SECRET=' .runtime/object_storage/credentials.env | cut -d= -f2 | tr -d '\r\n ')
 fi
 
 ENDPOINT="${S3_ENDPOINT:-http://127.0.0.1:8333}"
