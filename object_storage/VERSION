@@ -3,5 +3,6 @@ git_ref: 3.59
 git_commit: 27b34f37935fb3eddb9c7759acf397dbae20eb03
 license: Apache-2.0
 image: object-storage:3.59
+digest: sha256:06b9f8ed2fdeb672046948fc51b9e6c750c733adbc55e7ac79977848c2e8a968
 ha: none
 rpo: 24h
