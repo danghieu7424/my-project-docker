@@ -1,5 +1,5 @@
 
-| STT | Tiêu chí nghiệm thu (Đề bài) | Kết quả thực tế trên Terminal của bạn |
+| STT | Tiêu chí nghiệm thu (Đề bài) | Kết quả thực tế trên Terminal |
 |:---:|:---|:---|
 | **1** | **Script exit 0** | Dòng cuối cùng in: `✔ SMOKE TEST HOÀN TẤT THÀNH CÔNG (Mã thoát 0)` |
 | **2** | **Nội dung Get khớp nội dung Put** | `✔ Nội dung Get khớp 100% nội dung Put: ping_test_payload_1790443422` |
@@ -7,6 +7,7 @@
 | **4** | **List thấy key theo prefix trước khi xóa** | `✔ Thấy key 'probe.txt' theo prefix trước khi xóa` (`2026-09-27 00:23:44 29 probe.txt`) |
 | **5** | **Metadata trả về nguyên giá trị đã gửi** | `✔ Metadata trả về nguyên giá trị đã gửi: meta-val-1790443422` |
 
+---
 ---
 
 ```Bash
