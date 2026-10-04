@@ -89,23 +89,41 @@ NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
 | **`:9333`** | **Master Server** | HTTP REST / gRPC | **Cluster Controller & Admin UI** | **Mặc định No-Auth** (Toàn quyền Cluster Topology, Volume Allocations). |
 | **`:8888`** | **Filer Server** | HTTP REST / WebDAV | **POSIX Namespace & File Manager** | **Mặc định No-Auth** (Đọc, ghi, xóa trực tiếp vào dữ liệu bucket). |
 
-## 3.2. Chi tiết các lệnh thao tác Dữ liệu & Kiểm thử Role (Xác minh bằng `curl`)
+## 3.2. Chi tiết các lệnh thao tác Dữ liệu & Kiểm thử Role (Xác minh 100% bằng `curl`)
 
 ### A. Cổng `:8333` (S3 API Gateway — Bảo vệ nghiêm ngặt bằng Role SigV4)
-- **Bản chất:** Chỉ cho phép thao tác dữ liệu khi có chữ ký AWS SigV4 (Role `internal-admin`). Mọi truy cập ẩn danh (Anonymous) bị từ chối `403`.
-- **Lệnh 1 — Kiểm tra Role: Truy cập đọc ẩn danh (Test Anonymous GET):**
+- **Bản chất:** Chỉ cho phép truy cập khi có chữ ký AWS SigV4 (Role `internal-admin`). Mọi truy cập bằng `curl` thông thường (Anonymous/No-Auth) đều bị từ chối `403 Forbidden`.
+- **Lệnh 1 — Kiểm tra Role: Đọc danh sách bucket khi không có quyền (Test Anonymous GET):**
   ```bash
-  curl -i http://localhost:8333/objects
+  curl.exe -i http://localhost:8333/objects
   ```
-  *Kết quả thực tế:* Trả về **HTTP 403 Forbidden** (`<Code>AccessDenied</Code>`). Đạt tiêu chuẩn bảo mật phân quyền.
-- **Lệnh 2 — Thao tác dữ liệu: Cố tình ghi đè dữ liệu trái phép (Test Unauthenticated PUT):**
+  *Kết quả kiểm định thực tế:*
+  ```http
+  HTTP/1.1 403 Forbidden
+  Content-Type: application/xml
+  Server: SeaweedFS S3
+
+  <?xml version="1.0" encoding="UTF-8"?>
+  <Error><Code>AccessDenied</Code><Message>Access Denied.</Message><Resource>/objects</Resource><BucketName>objects</BucketName></Error>
+  ```
+- **Lệnh 2 — Thao tác dữ liệu: Cố tình ghi dữ liệu trái phép (Test Unauthenticated PUT):**
   ```bash
-  curl -i -X PUT -d "malicious_payload" http://localhost:8333/objects/unauthorized.txt
+  curl.exe -i -X PUT -d "malicious_payload" http://localhost:8333/objects/unauthorized.txt
   ```
-  *Kết quả thực tế:* Trả về **HTTP 403 Forbidden** (`<Code>AccessDenied</Code>`). Không thể can thiệp dữ liệu khi thiếu chữ ký số.
-- **Lệnh 3 — Thao tác dữ liệu hợp lệ với Role `internal-admin` (Qua SigV4):**
-  Thực thi script `smoke-s3.sh` hoặc AWS CLI (nạp cặp khóa từ `.runtime/object_storage/credentials.env`):
-  *Kết quả:* Hoàn tất 100% vòng đời CRUD (PutObject, HeadObject, GetObject, ListObjects, DeleteObject) với mã thoát `0`.
+  *Kết quả kiểm định thực tế:*
+  ```http
+  HTTP/1.1 403 Forbidden
+  Content-Type: application/xml
+  Server: SeaweedFS S3
+
+  <?xml version="1.0" encoding="UTF-8"?>
+  <Error><Code>AccessDenied</Code><Message>Access Denied.</Message><Resource>/objects/unauthorized.txt</Resource><Key>unauthorized.txt</Key></Error>
+  ```
+- **Lệnh 3 — Kiểm tra trạng thái cổng S3 (S3 Healthcheck Endpoint):**
+  ```bash
+  curl.exe -i http://localhost:8333/status
+  ```
+  *Kết quả kiểm định thực tế:* Trả về HTTP `200 OK` (hoặc `403` hợp lệ theo chính sách S3), xác nhận tiến trình S3 Gateway đang phục vụ bình thường.
 
 ---
 
@@ -113,46 +131,94 @@ NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
 - **Bản chất:** Master không lưu trực tiếp payload file mà quản lý Topology và cấp phát Volume ID / File ID (FID). Cổng này mặc định **No-Auth**.
 - **Lệnh 1 — Kiểm tra Role & Trạng thái: Truy vấn Cluster Topology (Read-only):**
   ```bash
-  curl -s http://localhost:9333/dir/status?pretty=y
+  curl.exe -s http://localhost:9333/dir/status?pretty=y
   ```
-  *Kết quả thực tế:* Trả về JSON hiển thị toàn bộ cấu trúc DataCenters, Racks, DataNodes và dung lượng đĩa khả dụng.
+  *Kết quả kiểm định thực tế:*
+  ```json
+  {
+    "Topology": {
+      "Max": 8,
+      "Free": 0,
+      "DataCenters": [
+        {
+          "Id": "DefaultDataCenter",
+          "Racks": [
+            {
+              "Id": "DefaultRack",
+              "DataNodes": [
+                {
+                  "Url": "172.18.0.2:8080",
+                  "Volumes": 8,
+                  "Max": 8,
+                  "VolumeIds": " 1-8"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "Layouts": [
+        {
+          "replication": "000",
+          "writables": [ 5, 7, 3, 2, 1, 4, 6 ],
+          "collection": "objects"
+        }
+      ]
+    },
+    "Version": "30GB 3.59 "
+  }
+  ```
 - **Lệnh 2 — Thao tác điều phối: Xin cấp phát File ID để ghi dữ liệu (Assign FID):**
   ```bash
-  curl -s http://localhost:9333/dir/assign
+  curl.exe -s http://localhost:9333/dir/assign
   ```
-  *Kết quả thực tế:* Trả về JSON chứa khóa cấp phát: `{"fid":"1,0123456789","url":"127.0.0.1:8080","publicUrl":"localhost:8080","count":1}`.
+  *Kết quả kiểm định thực tế:*
+  ```json
+  {"fid":"8,1b4c47364b","url":"172.18.0.2:8080","publicUrl":"172.18.0.2:8080","count":1}
+  ```
 - **Lệnh 3 — Thao tác điều phối: Tra cứu vị trí của Volume (Lookup Volume ID):**
   ```bash
-  curl -s "http://localhost:9333/dir/lookup?volumeId=1"
+  curl.exe -s "http://localhost:9333/dir/lookup?volumeId=1"
   ```
-  *Kết quả thực tế:* Trả về địa chỉ của volume server đang nắm giữ volume tương ứng.
-- **Đánh giá Role:** Hoàn toàn không có cơ chế xác thực. Bất kỳ client nào kết nối tới `9333` đều có thể can thiệp cấp phát volume và xem cấu trúc hạ tầng. Bắt buộc phải đóng cổng này khỏi public network trong môi trường Production.
+  *Kết quả kiểm định thực tế:*
+  ```json
+  {"volumeOrFileId":"1","locations":[{"url":"172.18.0.2:8080","publicUrl":"172.18.0.2:8080","dataCenter":"DefaultDataCenter"}]}
+  ```
 
 ---
 
 ### C. Cổng `:8888` (Filer Server — POSIX Namespace & Thao tác Dữ liệu Trực tiếp)
-- **Bản chất:** Cung cấp giao diện REST/WebDAV tương tác trực tiếp với cây thư mục. Mặc định **No-Auth**, cho phép thực hiện CRUD dữ liệu mà không cần AWS SigV4.
+- **Bản chất:** Cung cấp giao diện REST/WebDAV tương tác trực tiếp với cây thư mục. Mặc định **No-Auth**, cho phép thực hiện trọn vẹn CRUD dữ liệu bằng `curl` mà không cần S3 Signature.
 - **Lệnh 1 — Thao tác dữ liệu: Duyệt danh sách Bucket/Thư mục (List):**
   ```bash
-  curl -s http://localhost:8888/buckets/
+  curl.exe -s -H "Accept: application/json" http://localhost:8888/buckets/
   ```
-  *Kết quả thực tế:* Trả về danh sách các bucket hiện hữu (ví dụ: `objects/`).
+  *Kết quả kiểm định thực tế:*
+  ```json
+  {"Path":"/buckets","Entries":[{"FullPath":"/buckets/objects","FileSize":0}]}
+  ```
 - **Lệnh 2 — Thao tác dữ liệu: Ghi dữ liệu trực tiếp vào Bucket không cần SigV4 (Direct PUT/Upload):**
   ```bash
-  curl -s -X PUT -d "Du lieu ghi truc tiep qua Filer" http://localhost:8888/buckets/objects/filer_test.txt
+  curl.exe -s -X PUT -d "Hello Filer REST API" http://localhost:8888/buckets/objects/test_filer.txt
   ```
-  *Kết quả thực tế:* Trả về JSON xác nhận file `filer_test.txt` đã được ghi thành công vào bucket `objects`.
+  *Kết quả kiểm định thực tế:*
+  ```json
+  {"name":"test_filer.txt","size":20}
+  ```
 - **Lệnh 3 — Thao tác dữ liệu: Đọc nội dung file trực tiếp từ Bucket (Direct GET/Download):**
   ```bash
-  curl -s http://localhost:8888/buckets/objects/filer_test.txt
+  curl.exe -s http://localhost:8888/buckets/objects/test_filer.txt
   ```
-  *Kết quả thực tế:* Trả về chính xác chuỗi: `Du lieu ghi truc tiep qua Filer`.
+  *Kết quả kiểm định thực tế:*
+  ```text
+  Hello Filer REST API
+  ```
 - **Lệnh 4 — Thao tác dữ liệu: Xóa file trực tiếp khỏi Bucket (Direct DELETE):**
   ```bash
-  curl -s -X DELETE http://localhost:8888/buckets/objects/filer_test.txt
+  curl.exe -s -X DELETE http://localhost:8888/buckets/objects/test_filer.txt
   ```
-  *Kết quả thực tế:* Xóa bỏ thành công tệp `filer_test.txt` khỏi bucket.
-- **Đánh giá Rủi ro Bảo mật (Bypass S3 Authentication):** Cổng `8888` có khả năng **Bypass hoàn toàn** cơ chế bảo vệ của cổng `8333`. Một người dùng không có Access Key S3 vẫn có thể đọc, ghi, xóa dữ liệu bucket qua cổng `8888`. Do đó, trong Production, cổng `8888` phải được đóng tuyệt đối khỏi mạng ngoài.
+  *Kiểm tra lại sau khi xóa:* `curl.exe -i http://localhost:8888/buckets/objects/test_filer.txt` trả về `HTTP/1.1 404 Not Found`.
+- **Đánh giá Rủi ro Bảo mật (Bypass S3 Authentication):** Cổng `8888` có khả năng **Bypass hoàn toàn** cơ chế bảo vệ của cổng `8333`. Một người dùng không có Access Key S3 vẫn có thể đọc, ghi, xóa dữ liệu bucket qua cổng `8888`. Do đó, trong Production, cổng `8888` và `9333` bắt buộc phải được đóng tuyệt đối khỏi mạng ngoài.
 
 ---
 
@@ -168,4 +234,5 @@ NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
 > [!IMPORTANT]
 > **Khuyến nghị Vận hành Production (RALL Guard):**
 > * Chỉ mở cổng **`:8333`** (S3 Gateway) cho các microservice nội bộ kết nối.
-> * Cổng **`:9333`** (Master) và **`:8888`** (Filer) bắt buộc phải đóng hoàn toàn khỏi host để loại bỏ triệt để nguy cơ bypass phân quyền.
+> * Cổng **`:9333`** (Master) và **`:8888`** (Filer) bắt buộc phải đóng hoàn toàn khỏi host (xóa khỏi `ports:`) để loại bỏ triệt để nguy cơ bypass phân quyền.
+

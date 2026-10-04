@@ -1,12 +1,19 @@
-# Kích hoạt JWT bảo vệ cổng 8888 (Filer)
-[jwt.filer]
-enabled = true
-signing.key = "SecretKeyChoFiler2026!@#"
-expires_after_seconds = 3600
-read.signing.key = "SecretKeyChoFiler2026!@#"
+# Khóa JWT bảo vệ thao tác GHI vào Filer (cổng 8888)
+[jwt.filer_signing]
+key = "SecretKeyChoFiler2026!@#"
+expires_after_seconds = 60
 
-# Kích hoạt JWT bảo vệ cổng 9333 (Master)
-[jwt.master]
-enabled = true
-signing.key = "SecretKeyChoMaster2026!@#"
-expires_after_seconds = 3600
+# Khóa JWT bảo vệ thao tác ĐỌC từ Filer (cổng 8888)
+[jwt.filer_signing.read]
+key = "SecretKeyChoFiler2026!@#"
+expires_after_seconds = 60
+
+# Khóa JWT bảo vệ thao tác GHI vào Master/Volume (cổng 9333)
+[jwt.signing]
+key = "SecretKeyChoMaster2026!@#"
+expires_after_seconds = 60
+
+# Khóa JWT bảo vệ thao tác ĐỌC từ Master/Volume
+[jwt.signing.read]
+key = "SecretKeyChoMaster2026!@#"
+expires_after_seconds = 60

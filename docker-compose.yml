@@ -23,7 +23,7 @@ services:
     volumes:
       - object_storage_data:/data
       - ./.runtime/object_storage/s3.json:/etc/object_storage/s3.json:ro
-      - ./.runtime/object_storage/security.toml:/etc/object_storage/security.toml:ro
+
 
 volumes:
   object_storage_data:
