@@ -1,0 +1,12 @@
+# Kích hoạt JWT bảo vệ cổng 8888 (Filer)
+[jwt.filer]
+enabled = true
+signing.key = "SecretKeyChoFiler2026!@#"
+expires_after_seconds = 3600
+read.signing.key = "SecretKeyChoFiler2026!@#"
+
+# Kích hoạt JWT bảo vệ cổng 9333 (Master)
+[jwt.master]
+enabled = true
+signing.key = "SecretKeyChoMaster2026!@#"
+expires_after_seconds = 3600
